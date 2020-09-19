@@ -1,4 +1,4 @@
-# online_class_reminder
+# Monday - Online Meetings Reminder
 
 A new Flutter application.
 
