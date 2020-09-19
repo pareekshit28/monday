@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1061679663972",
+    "firebase_url": "https://online-class-reminder.firebaseio.com",
+    "project_id": "online-class-reminder",
+    "storage_bucket": "online-class-reminder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1061679663972:android:7d28f3ad67312eac10c871",
+        "android_client_info": {
+          "package_name": "com.onlineclassreminder.online_class_reminder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1061679663972-ehakh1qcr57bc8jjqfcfsh6pd4g5ejj3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onlineclassreminder.online_class_reminder",
+            "certificate_hash": "cf562cbf95f8e44ccacb8a343bc1479fae08baad"
+          }
+        },
+        {
+          "client_id": "1061679663972-0qmqh6ic3ubq2ik5hpucj6ocjc1i2r9f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_k8aplZHBVna1f_Cjn3RVUX4PhMtAZdU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1061679663972-0qmqh6ic3ubq2ik5hpucj6ocjc1i2r9f.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
