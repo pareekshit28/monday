@@ -7,16 +7,17 @@ import 'package:online_class_reminder/Services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class Recurring extends StatefulWidget {
+class RRecurring extends StatefulWidget {
   final User user;
+  final rid;
 
-  Recurring(this.user);
+  RRecurring(this.user, this.rid);
 
   @override
-  _RecurringState createState() => _RecurringState();
+  _RRecurringState createState() => _RRecurringState();
 }
 
-class _RecurringState extends State<Recurring> {
+class _RRecurringState extends State<RRecurring> {
   int day = 1;
 
   @override
@@ -77,8 +78,8 @@ class _RecurringState extends State<Recurring> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(widget.user.uid)
+                    .collection('rooms')
+                    .doc(widget.rid)
                     .collection('links')
                     .where('type', isEqualTo: [day, 'recurring']).snapshots(),
                 builder: (context, snapshot) {
@@ -115,56 +116,74 @@ class _RecurringState extends State<Recurring> {
                                                   child: InkWell(
                                                 onTap: () {
                                                   Navigator.of(context).pop();
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (context) {
-                                                      return AlertDialog(
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8)),
-                                                        title: Text(
-                                                            'Are you sure?'),
-                                                        content: Text(
-                                                          'This will delete the event permanently!',
-                                                        ),
-                                                        actions: [
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .all(8.0),
-                                                            child:
-                                                                MaterialButton(
-                                                              color: Colors
-                                                                  .redAccent,
-                                                              child: Text(
-                                                                  'Delete'),
-                                                              onPressed: () {
-                                                                Provider.of<Services>(
-                                                                        context,
-                                                                        listen:
-                                                                            false)
-                                                                    .deleteRecurring(
-                                                                  widget.user,
-                                                                  snapshot
-                                                                      .data.docs
-                                                                      .elementAt(
-                                                                          index)
-                                                                      .get(
-                                                                          'id'),
-                                                                );
-                                                                Navigator.of(
-                                                                        context)
-                                                                    .pop();
-                                                              },
-                                                            ),
-                                                          )
-                                                        ],
-                                                      );
-                                                    },
-                                                  );
+                                                  Provider.of<Services>(context,
+                                                              listen: false)
+                                                          .isAdmin
+                                                      ? showDialog(
+                                                          context: context,
+                                                          builder: (context) {
+                                                            return AlertDialog(
+                                                              shape: RoundedRectangleBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8)),
+                                                              title: Text(
+                                                                  'Are you sure?'),
+                                                              content: Text(
+                                                                'This will delete the event permanently!',
+                                                              ),
+                                                              actions: [
+                                                                Padding(
+                                                                  padding:
+                                                                      const EdgeInsets
+                                                                              .all(
+                                                                          8.0),
+                                                                  child:
+                                                                      MaterialButton(
+                                                                    color: Colors
+                                                                        .redAccent,
+                                                                    child: Text(
+                                                                        'Delete'),
+                                                                    onPressed:
+                                                                        () {
+                                                                      Provider.of<Services>(
+                                                                              context,
+                                                                              listen: false)
+                                                                          .deleteRRecurring(
+                                                                        widget
+                                                                            .rid,
+                                                                        snapshot
+                                                                            .data
+                                                                            .docs
+                                                                            .elementAt(index)
+                                                                            .get('id'),
+                                                                      );
+                                                                      Navigator.of(
+                                                                              context)
+                                                                          .pop();
+                                                                    },
+                                                                  ),
+                                                                )
+                                                              ],
+                                                            );
+                                                          },
+                                                        )
+                                                      : Scaffold.of(context)
+                                                          .showSnackBar(
+                                                              SnackBar(
+                                                                  backgroundColor:
+                                                                      Color.fromRGBO(
+                                                                          25,
+                                                                          25,
+                                                                          25,
+                                                                          1),
+                                                                  content: Text(
+                                                                    'Only admins can add links!',
+                                                                    style: TextStyle(
+                                                                        color: Colors
+                                                                            .white),
+                                                                  )));
                                                 },
                                                 child: Row(
                                                   children: [

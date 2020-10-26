@@ -7,10 +7,11 @@ import 'package:online_class_reminder/Services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class NonReccuring extends StatelessWidget {
+class RNonReccuring extends StatelessWidget {
   final User user;
+  final rid;
 
-  NonReccuring(this.user);
+  RNonReccuring(this.user, this.rid);
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +45,8 @@ class NonReccuring extends StatelessWidget {
             ),
             child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
+                    .collection('rooms')
+                    .doc(rid)
                     .collection('links')
                     .where('type', isEqualTo: 'nonRecurring')
                     .snapshots(),
@@ -87,55 +88,75 @@ class NonReccuring extends StatelessWidget {
                                                 child: InkWell(
                                               onTap: () {
                                                 Navigator.of(context).pop();
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (context) {
-                                                    return AlertDialog(
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8)),
-                                                      title:
-                                                          Text('Are you sure?'),
-                                                      content: Text(
-                                                        'This will delete the event permanently!',
-                                                      ),
-                                                      actions: [
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(8.0),
-                                                          child: MaterialButton(
-                                                            color: Colors
-                                                                .redAccent,
-                                                            child:
-                                                                Text('Delete'),
-                                                            onPressed: () {
-                                                              Provider.of<Services>(
-                                                                      context,
-                                                                      listen:
-                                                                          false)
-                                                                  .deleteNonRecurring(
-                                                                      user,
+                                                Provider.of<Services>(context,
+                                                            listen: false)
+                                                        .isAdmin
+                                                    ? showDialog(
+                                                        context: context,
+                                                        builder: (context) {
+                                                          return AlertDialog(
+                                                            shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8)),
+                                                            title: Text(
+                                                                'Are you sure?'),
+                                                            content: Text(
+                                                              'This will delete the event permanently!',
+                                                            ),
+                                                            actions: [
+                                                              Padding(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .all(
+                                                                        8.0),
+                                                                child:
+                                                                    MaterialButton(
+                                                                  color: Colors
+                                                                      .redAccent,
+                                                                  child: Text(
+                                                                      'Delete'),
+                                                                  onPressed:
+                                                                      () {
+                                                                    Provider.of<Services>(
+                                                                            context,
+                                                                            listen:
+                                                                                false)
+                                                                        .deleteRNonRecurring(
+                                                                      rid,
                                                                       snapshot
                                                                           .data
                                                                           .docs
                                                                           .elementAt(
                                                                               index)
                                                                           .get(
-                                                                              'id'));
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                            },
-                                                          ),
-                                                        )
-                                                      ],
-                                                    );
-                                                  },
-                                                );
+                                                                              'id'),
+                                                                    );
+                                                                    Navigator.of(
+                                                                            context)
+                                                                        .pop();
+                                                                  },
+                                                                ),
+                                                              )
+                                                            ],
+                                                          );
+                                                        },
+                                                      )
+                                                    : Scaffold.of(context)
+                                                        .showSnackBar(SnackBar(
+                                                            backgroundColor:
+                                                                Color.fromRGBO(
+                                                                    25,
+                                                                    25,
+                                                                    25,
+                                                                    1),
+                                                            content: Text(
+                                                              'Only admins can add links!',
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .white),
+                                                            )));
                                               },
                                               child: Row(
                                                 children: [

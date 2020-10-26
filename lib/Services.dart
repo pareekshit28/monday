@@ -1,123 +1,320 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:uuid/uuid.dart';
 
 class Services with ChangeNotifier {
   final db = FirebaseFirestore.instance;
   bool recurring = false;
   final uuid = Uuid();
-  List<Map> todayList = [];
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-
+  List<QueryDocumentSnapshot> todayList = [];
+  bool isAdmin;
+  bool loading = false;
   void changeRecurring(bool newValue) {
     recurring = newValue;
     notifyListeners();
   }
 
-  void addToToday(User user) {
-    String day;
-    todayList.clear();
-    if (DateTime.now().weekday == 1) {
-      day = 'Monday';
-    }
-    if (DateTime.now().weekday == 2) {
-      day = 'Tuesday';
-    }
-    if (DateTime.now().weekday == 3) {
-      day = 'Wednesday';
-    }
-    if (DateTime.now().weekday == 4) {
-      day = 'Thursday';
-    }
-    if (DateTime.now().weekday == 5) {
-      day = 'Friday';
-    }
-    if (DateTime.now().weekday == 6) {
-      day = 'Saturday';
-    }
-    if (DateTime.now().weekday == 7) {
-      day = 'Sunday';
-    }
-    db
-        .collection(user.uid)
-        .doc('nonRecurring')
-        .collection('dates')
+  void checkAdmin(String rid) {
+    String uid = FirebaseAuth.instance.currentUser.uid;
+    FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(rid)
+        .collection('admins')
+        .where('uid', isEqualTo: uid)
         .get()
         .then((value) {
-      for (var document in value.docs) {
-        if (document.data()['date'].toString().split(' ')[0] ==
-            DateTime.now().toString().split(' ')[0]) {
-          todayList.add(document.data());
-        }
+      value.docs.length == 0 ? isAdmin = false : isAdmin = true;
+      notifyListeners();
+    });
+  }
+
+  void addToToday(User user) {
+    loading = true;
+    notifyListeners();
+    List roomList = [];
+    db
+        .collection('users')
+        .doc(user.uid)
+        .collection('rooms')
+        .get()
+        .then((value) {
+      todayList.clear();
+      roomList = value.docs;
+      for (QueryDocumentSnapshot room in roomList) {
+        db
+            .collection('rooms')
+            .doc(room.data()['id'])
+            .collection('links')
+            .where('type', isEqualTo: [DateTime.now().weekday, 'recurring'])
+            .get()
+            .then((value) {
+              for (var doc in value.docs) {
+                todayList.add(doc);
+              }
+              loading = false;
+              notifyListeners();
+            })
+            .whenComplete(() {
+              db
+                  .collection('rooms')
+                  .doc(room.data()['id'])
+                  .collection('links')
+                  .where('date',
+                      isEqualTo: DateTime.now().toString().split(' ')[0])
+                  .get()
+                  .then((value) {
+                for (var doc in value.docs) {
+                  todayList.add(doc);
+                }
+                loading = false;
+                notifyListeners();
+              });
+            })
+            .whenComplete(() {
+              db
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('links')
+                  .where('type',
+                      isEqualTo: [DateTime.now().weekday, 'recurring'])
+                  .get()
+                  .then((value) {
+                    for (var doc in value.docs) {
+                      todayList.add(doc);
+                    }
+                    loading = false;
+                    notifyListeners();
+                  });
+            })
+            .whenComplete(() {
+              db
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('links')
+                  .where('date',
+                      isEqualTo: DateTime.now().toString().split(' ')[0])
+                  .get()
+                  .then((value) {
+                for (var doc in value.docs) {
+                  todayList.add(doc);
+                }
+                loading = false;
+                notifyListeners();
+              });
+            })
+            .whenComplete(() {
+              todayList.sort((a, b) => a
+                  .data()['time']
+                  .toString()
+                  .compareTo(b.data()['time'].toString()));
+              loading = false;
+              notifyListeners();
+            });
       }
-    }).whenComplete(() {
+    });
+    loading = false;
+    notifyListeners();
+  }
+
+  void createRoom(User user, String name) {
+    var id = uuid.v4();
+    var created = DateTime.now().toString();
+    db
+        .collection('rooms')
+        .doc(id)
+        .collection('details')
+        .doc('details')
+        .set({'name': name, 'created': created, 'id': id});
+    joinAsAdmin(user, id);
+  }
+
+  void leaveRoom(String rid, User user) {
+    db.collection('users').doc(user.uid).collection('rooms').doc(rid).delete();
+    db.collection('rooms').doc(rid).collection('admins').doc(user.uid).delete();
+    db
+        .collection('rooms')
+        .doc(rid)
+        .collection('non-admins')
+        .doc(user.uid)
+        .delete();
+  }
+
+  void joinAsAdmin(User user, String id) {
+    var name;
+    var created;
+    db
+        .collection('rooms')
+        .doc(id)
+        .collection('details')
+        .doc('details')
+        .get()
+        .then((value) {
+      name = value.get('name');
+      created = value.get('created');
+    }).then((value) {
       db
-          .collection(user.uid)
-          .doc('recurring')
-          .collection(day)
-          .get()
-          .then((value) {
-        for (var document in value.docs) {
-          todayList.add(document.data());
-        }
-        todayList.sort(
-            (a, b) => a['time'].toString().compareTo(b['time'].toString()));
-        notifyListeners();
+          .collection('users')
+          .doc(user.uid)
+          .collection('rooms')
+          .doc(id)
+          .set({'id': id, 'name': name, 'created': created});
+
+      db.collection('rooms').doc(id).collection('admins').doc(user.uid).set({
+        'uid': user.uid,
+        'username': user.displayName,
+        'userphoto': user.photoURL
       });
+    });
+  }
+
+  void joinAsNonAdmin(User user, String id) {
+    var name;
+    var created;
+    db
+        .collection('rooms')
+        .doc(id)
+        .collection('details')
+        .doc('details')
+        .get()
+        .then((value) {
+      name = value.get('name');
+      created = value.get('created');
+    }).then((value) {
+      db
+          .collection('users')
+          .doc(user.uid)
+          .collection('rooms')
+          .doc(id)
+          .set({'id': id, 'name': name, 'created': created});
+
+      db
+          .collection('rooms')
+          .doc(id)
+          .collection('non-admins')
+          .doc(user.uid)
+          .set({
+        'uid': user.uid,
+        'username': user.displayName,
+        'userphoto': user.photoURL
+      });
+    });
+  }
+
+  void addAdmin(String rid, String uid, String displayName, String photoUrl) {
+    db.collection('rooms').doc(rid).collection('non-admins').doc(uid).delete();
+    db
+        .collection('rooms')
+        .doc(rid)
+        .collection('admins')
+        .doc(uid)
+        .set({'uid': uid, 'username': displayName, 'userphoto': photoUrl});
+  }
+
+  void removeAdmin(
+      String rid, String uid, String displayName, String photoUrl) {
+    db.collection('rooms').doc(rid).collection('admins').doc(uid).delete();
+    db
+        .collection('rooms')
+        .doc(rid)
+        .collection('non-admins')
+        .doc(uid)
+        .set({'uid': uid, 'username': displayName, 'userphoto': photoUrl});
+  }
+
+  void addDateToRoom(String rid, User user, String title, String link,
+      String password, DateTime date, TimeOfDay time) {
+    var id = uuid.v4();
+    db.collection('rooms').doc(rid).collection('links').doc(id).set({
+      'title': title,
+      'link': link,
+      'password': password == '' ? 'N/A' : password,
+      'date': date.toString().split(' ')[0],
+      'day': date.weekday,
+      'time': time.toString(),
+      'id': id,
+      'type': 'nonRecurring'
     });
   }
 
   void addDate(User user, String title, String link, String password,
       DateTime date, TimeOfDay time) {
-    String string = date.month.toString() +
-        date.day.toString() +
-        time.hour.toString() +
-        time.minute.toString();
-    var nid = int.parse(string);
-    db
-        .collection(user.uid)
-        .doc('nonRecurring')
-        .collection('dates')
-        .doc(date.toString() + time.toString())
-        .set({
+    var id = uuid.v4();
+    db.collection('users').doc(user.uid).collection('links').doc(id).set({
       'title': title,
       'link': link,
       'password': password == '' ? 'N/A' : password,
-      'date': date.toString(),
+      'date': date.toString().split(' ')[0],
+      'day': date.weekday,
       'time': time.toString(),
-      'nid': nid
+      'id': id,
+      'type': 'nonRecurring'
     });
-    addToToday(user);
-    showNotifOnce(nid, title, date, time);
   }
 
-  void addDay(User user, String title, String link, String password, String day,
-      Day dDay, TimeOfDay time, int week) {
+  void addDayToRoom(
+    String rid,
+    String title,
+    String link,
+    String password,
+    int day,
+    TimeOfDay time,
+  ) {
     var id = uuid.v4();
-    var string =
-        week.toString() + time.hour.toString() + time.minute.toString();
-    var nid = int.parse(string);
-    db.collection(user.uid).doc('recurring').collection(day).doc(id).set({
+    db
+      ..collection('rooms').doc(rid).collection('links').doc(id).set({
+        'title': title,
+        'link': link,
+        'password': password == '' ? 'N/A' : password,
+        'day': day,
+        'time': time.toString(),
+        'id': id,
+        'type': [day, 'recurring']
+      });
+  }
+
+  void addDay(
+    User user,
+    String title,
+    String link,
+    String password,
+    int day,
+    TimeOfDay time,
+  ) {
+    var id = uuid.v4();
+    db.collection('users').doc(user.uid).collection('links').doc(id).set({
       'title': title,
       'link': link,
       'password': password == '' ? 'N/A' : password,
       'day': day,
       'time': time.toString(),
       'id': id,
-      'nid': nid
+      'type': [day, 'recurring']
     });
-    showNotifWeekly(nid, title, dDay, time);
+  }
+
+  void deleteUselessInRoom(String rid) {
+    String yesterday =
+        DateTime.now().subtract(Duration(days: 2)).toString().split(' ')[0];
+
+    db.collection('rooms').doc(rid).collection('links').get().then((value) {
+      for (var doc in value.docs) {
+        if (doc.data()['date'].toString().split(' ')[0].compareTo(yesterday) ==
+            -1) {
+          doc.reference.delete();
+        }
+      }
+    });
   }
 
   void deleteUseless(User user) {
     String yesterday =
         DateTime.now().subtract(Duration(days: 1)).toString().split(' ')[0];
+
     db
-        .collection(user.uid)
-        .doc('nonRecurring')
-        .collection('dates')
+        .collection('users')
+        .doc(user.uid)
+        .collection('links')
         .get()
         .then((value) {
       for (var doc in value.docs) {
@@ -129,88 +326,22 @@ class Services with ChangeNotifier {
     });
   }
 
-  void deleteRecurring(User user, String day, String id, int nid) {
-    db.collection(user.uid).doc('recurring').collection(day).doc(id).delete();
-    addToToday(user);
-    FlutterLocalNotificationsPlugin().cancel(nid);
+  void deleteRRecurring(String rid, String id) {
+    db.collection('rooms').doc(rid).collection('links').doc(id).delete();
   }
 
-  void deleteNonRecurring(User user, String id, int nid) {
-    db
-        .collection(user.uid)
-        .doc('nonRecurring')
-        .collection('dates')
-        .doc(id)
-        .delete();
-    addToToday(user);
-    FlutterLocalNotificationsPlugin().cancel(nid);
+  void deleteRecurring(User user, String id) {
+    db.collection('users').doc(user.uid).collection('links').doc(id).delete();
   }
 
-  void init() {
-    var androidInit = AndroidInitializationSettings('ic_stat_name');
-    var iosInit = IOSInitializationSettings();
-    var generalInitSettings = InitializationSettings(androidInit, iosInit);
-    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    flutterLocalNotificationsPlugin.initialize(
-      generalInitSettings,
-    );
+  void deleteRNonRecurring(String rid, String id) {
+    db.collection('rooms').doc(rid).collection('links').doc(id).delete();
   }
 
-  Future showNotifOnce(
-    int id,
-    String title,
-    DateTime pickedDate,
-    TimeOfDay pickedTime,
-  ) async {
-    init();
-    var year = pickedDate.year;
-    var month = pickedDate.month;
-    var date = pickedDate.day;
-    var hour = pickedTime.hour;
-    var minute = pickedTime.minute;
-    DateTime scheduledDateTime = DateTime(year, month, date, hour, minute);
-    var androidDetails = AndroidNotificationDetails(
-        'reminders', 'Reminders', 'Meeting Reminders',
-        color: Colors.cyan,
-        importance: Importance.High,
-        priority: Priority.High,
-        playSound: true,
-        enableVibration: true);
-    var iosDetails = IOSNotificationDetails();
-    var generalDetails = NotificationDetails(androidDetails, iosDetails);
-
-    await flutterLocalNotificationsPlugin.schedule(
-        id, title, '$title is about Start', scheduledDateTime, generalDetails,
-        androidAllowWhileIdle: true);
-  }
-
-  Future showNotifWeekly(
-    int id,
-    String title,
-    Day dDay,
-    TimeOfDay pickedTime,
-  ) async {
-    init();
-    var hour = pickedTime.hour;
-    var minute = pickedTime.minute;
-    Time time = Time(hour, minute);
-    var androidDetails = AndroidNotificationDetails(
-        'reminders', 'Reminders', 'Meeting Reminders',
-        color: Colors.cyan,
-        importance: Importance.High,
-        priority: Priority.High,
-        playSound: true,
-        enableVibration: true);
-    var iosDetails = IOSNotificationDetails();
-    var generalDetails = NotificationDetails(androidDetails, iosDetails);
-
-    await flutterLocalNotificationsPlugin.showWeeklyAtDayAndTime(
-      id,
-      title,
-      'Click to Join',
-      dDay,
-      time,
-      generalDetails,
-    );
+  void deleteNonRecurring(
+    User user,
+    String id,
+  ) {
+    db.collection('users').doc(user.uid).collection('links').doc(id).delete();
   }
 }

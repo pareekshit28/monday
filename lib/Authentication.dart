@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:online_class_reminder/Timetable.dart';
+import 'package:online_class_reminder/HomeScreen.dart';
 
 class Authentication extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -145,34 +145,10 @@ class Authentication extends StatelessWidget {
   }
 
   void onGoogleSignIn(BuildContext context) async {
-    await signInWithGoogle().then((value) => Navigator.of(context)
-        .pushAndRemoveUntil(
-            MaterialPageRoute(
-                builder: (context) => Timetable(value, todayDay())),
-            (route) => false));
-  }
-
-  String todayDay() {
-    if (DateTime.now().weekday == 1) {
-      return 'Monday';
-    }
-    if (DateTime.now().weekday == 2) {
-      return 'Tuesday';
-    }
-    if (DateTime.now().weekday == 3) {
-      return 'Wednesday';
-    }
-    if (DateTime.now().weekday == 4) {
-      return 'Thursday';
-    }
-    if (DateTime.now().weekday == 5) {
-      return 'Friday';
-    }
-    if (DateTime.now().weekday == 6) {
-      return 'Saturday';
-    }
-    if (DateTime.now().weekday == 7) {
-      return 'Sunday';
-    }
+    await signInWithGoogle().then((value) {
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => HomeScreen(value)),
+          (route) => false);
+    });
   }
 }

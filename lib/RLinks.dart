@@ -2,30 +2,47 @@ import 'package:day_selector/day_selector.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:online_class_reminder/Non_Recurring.dart';
-import 'package:online_class_reminder/Recurring.dart';
+import 'package:online_class_reminder/RNon_Recurring.dart';
+import 'package:online_class_reminder/RRecurring.dart';
 import 'package:online_class_reminder/Services.dart';
 import 'package:provider/provider.dart';
 
-class Links extends StatefulWidget {
+class RLinks extends StatefulWidget {
   final User user;
-
-  Links(this.user);
+  final title;
+  final rid;
+  final scaffoldKey = GlobalKey<ScaffoldState>();
+  RLinks(this.user, this.title, this.rid);
 
   @override
-  _LinksState createState() => _LinksState();
+  _RLinksState createState() => _RLinksState();
 }
 
-class _LinksState extends State<Links> {
+class _RLinksState extends State<RLinks> {
   int _currentIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    Provider.of<Services>(context, listen: false).checkAdmin(widget.rid);
+  }
 
   @override
   Widget build(BuildContext context) {
     List _children = [
-      Recurring(widget.user),
-      NonReccuring(widget.user),
+      RRecurring(widget.user, widget.rid),
+      RNonReccuring(widget.user, widget.rid),
     ];
     return Scaffold(
+      key: widget.scaffoldKey,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        backgroundColor: Colors.black,
+        title: Text(widget.title,
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 42,
+                fontWeight: FontWeight.normal)),
+      ),
       backgroundColor: Colors.black,
       bottomNavigationBar: BottomNavigationBar(
           showUnselectedLabels: false,
@@ -56,8 +73,15 @@ class _LinksState extends State<Links> {
         elevation: 0,
         backgroundColor: Colors.white,
         onPressed: () {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => AddLinks(widget.user)));
+          Provider.of<Services>(context, listen: false).isAdmin
+              ? Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => AddLinks(widget.user, widget.rid)))
+              : widget.scaffoldKey.currentState.showSnackBar(SnackBar(
+                  backgroundColor: Color.fromRGBO(25, 25, 25, 1),
+                  content: Text(
+                    'Only admins can add links!',
+                    style: TextStyle(color: Colors.white),
+                  )));
         },
         child: Icon(
           Icons.add,
@@ -76,6 +100,7 @@ class _LinksState extends State<Links> {
 
 class AddLinks extends StatefulWidget {
   final User user;
+  final rid;
   final List weeks = [
     'Monday',
     'Tuesday',
@@ -86,7 +111,7 @@ class AddLinks extends StatefulWidget {
     'Sunday'
   ];
 
-  AddLinks(this.user);
+  AddLinks(this.user, this.rid);
   @override
   _AddLinksState createState() => _AddLinksState();
 }
@@ -116,7 +141,8 @@ class _AddLinksState extends State<AddLinks> {
         elevation: 0,
         onPressed: () {
           if (recurring == false) {
-            Provider.of<Services>(context, listen: false).addDate(
+            Provider.of<Services>(context, listen: false).addDateToRoom(
+                widget.rid,
                 widget.user,
                 titleController.text,
                 linkController.text,
@@ -128,8 +154,8 @@ class _AddLinksState extends State<AddLinks> {
           }
           if (recurring == true) {
             for (Map map in selectedDays) {
-              Provider.of<Services>(context, listen: false).addDay(
-                widget.user,
+              Provider.of<Services>(context, listen: false).addDayToRoom(
+                widget.rid,
                 titleController.text,
                 linkController.text,
                 passwordController.text,
